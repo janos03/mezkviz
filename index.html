@@ -1119,6 +1119,111 @@
             100% { transform: scale(1.04); opacity: 1; text-shadow: 0 0 35px rgba(245, 158, 11, 0.8); }
         }
 
+        
+        /* --- CLOUD SYNC & LIVE STATUS STYLES --- */
+        .cloud-status-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: var(--radius-md);
+            padding: 6px 12px;
+            margin-bottom: 10px;
+            font-size: 0.78rem;
+        }
+
+        .cloud-badge-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 700;
+        }
+
+        .cloud-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .cloud-dot.online {
+            background: #10b981;
+            box-shadow: 0 0 8px #10b981;
+            animation: pulse-dot 2s infinite;
+        }
+        .cloud-dot.offline {
+            background: #f59e0b;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.85); }
+        }
+
+        .cloud-sync-btn {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: var(--primary-light);
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .cloud-sync-btn:hover {
+            background: var(--primary);
+            color: #000;
+        }
+
+        .toast-notification {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border: 2px solid var(--primary);
+            color: #fff;
+            padding: 12px 20px;
+            border-radius: 999px;
+            font-weight: 800;
+            font-size: 0.9rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.6), 0 0 20px var(--primary-glow);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            opacity: 0;
+            transition: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            pointer-events: none;
+        }
+        .toast-notification.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        .admin-cloud-box {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--border-card);
+            border-radius: var(--radius-md);
+            padding: 12px;
+            margin-top: 10px;
+            text-align: left;
+        }
+
+        .admin-cloud-title {
+            font-size: 0.85rem;
+            font-weight: 800;
+            color: var(--primary-light);
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
         /* SCROLLBAR */
         ::-webkit-scrollbar {
             width: 6px;
@@ -1314,6 +1419,21 @@
                     </h2>
                 </div>
 
+                
+                <!-- LIVE CLOUD SYNC STATUS BAR -->
+                <div class="cloud-status-bar" id="dash-cloud-bar">
+                    <div class="cloud-badge-status" id="cloud-status-text">
+                        <span class="cloud-dot online" id="cloud-dot-indicator"></span>
+                        <span id="cloud-status-label">Élő Közös Ranglista</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="color: var(--text-muted); font-size: 0.72rem;" id="cloud-last-synced">Épp most frissítve</span>
+                        <button class="cloud-sync-btn" id="cloud-manual-sync-btn" title="Kézi szinkronizálás">
+                            🔄 Frissítés
+                        </button>
+                    </div>
+                </div>
+
                 <!-- PLAYER CELEBRATION BANNER -->
                 <div class="kid-hero-banner" id="dash-player-banner">
                     <span>✨</span>
@@ -1400,6 +1520,12 @@
     </div>
 
     <!-- HIDDEN ORGANIZER / ADMIN MODAL -->
+    <!-- TOAST NOTIFICATION -->
+    <div class="toast-notification" id="toast-notif">
+        <span id="toast-icon">🎉</span>
+        <span id="toast-msg">Új kitöltő érkezett!</span>
+    </div>
+
     <div class="modal-overlay" id="modal-admin">
         <div class="modal-box" style="max-width: 500px;">
             <button class="modal-close-btn" onclick="closeModal('modal-admin')">✕</button>
@@ -1408,7 +1534,22 @@
                 Ez a menü csak a szervezőknek látható (Ctrl+Shift+A vagy fejléc 5x koppintás).
             </p>
             
-            <div style="display: flex; flex-direction: column; gap: 10px;">
+            
+            <!-- CLOUD SYNC CONFIGURATION -->
+            <div class="admin-cloud-box">
+                <div class="admin-cloud-title">📡 Központi Felhő Szinkron (Google Táblázat / Webhook)</div>
+                <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 8px;">
+                    Add meg a Google Apps Script Web App vagy saját webhook URL-jét a telefonok és a laptop közös élő ranglistájához:
+                </p>
+                <input type="url" id="admin-cloud-url-input" class="text-input" placeholder="https://script.google.com/macros/s/.../exec" style="padding: 8px 12px; font-size: 0.8rem; margin-bottom: 8px;">
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn btn-primary btn-sm" id="admin-cloud-save-btn" style="flex: 1;">💾 Mentés</button>
+                    <button class="btn btn-secondary btn-sm" id="admin-cloud-test-btn" style="flex: 1;">🧪 Kapcsolat Teszt</button>
+                </div>
+                <div id="admin-cloud-msg" style="font-size: 0.75rem; margin-top: 6px; display: none;"></div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 12px;">
                 <button class="btn btn-secondary" id="admin-export-json">📥 Eredmények Mentése (JSON)</button>
                 <button class="btn btn-secondary" id="admin-export-csv">📊 Excel Táblázat Letöltése (CSV)</button>
                 <button class="btn btn-secondary" id="admin-import-json">📤 JSON Fájl Betöltése</button>
@@ -2249,6 +2390,180 @@
     })();
 
     /* ==========================================================================
+       4.9 CLOUD SYNC ENGINE (Google Apps Script / Webhook / REST)
+       ========================================================================== */
+    var CloudEngine = (function(){
+        var CLOUD_URL_KEY = 'kutatok_ejszakaja_cloud_url_v2026';
+        // Ha szeretnéd kódba égetni a Google Apps Script URL-t, ide is beillesztheted:
+        var DEFAULT_CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzWbIJfcSthnKQV0HAaVapp42Dj3GKpk7OezaVCCYAKh-m1rXHbxM7lrfMlvVgvHIxg/exec';
+
+        function getUrl() {
+            return localStorage.getItem(CLOUD_URL_KEY) || DEFAULT_CLOUD_URL || '';
+        }
+
+        function setUrl(url) {
+            if (url && url.trim()) {
+                localStorage.setItem(CLOUD_URL_KEY, url.trim());
+            } else {
+                localStorage.removeItem(CLOUD_URL_KEY);
+            }
+        }
+
+        var isFetching = false;
+        var lastSyncTime = null;
+        var autoPollInterval = null;
+        var previousPlayerCount = 0;
+
+        return {
+            getUrl: getUrl,
+            setUrl: setUrl,
+            isConfigured: function() {
+                return getUrl().length > 10;
+            },
+            getLastSyncTime: function() {
+                return lastSyncTime;
+            },
+            sendResult: function(record, callback) {
+                var url = getUrl();
+                if (!url) {
+                    if (callback) callback(false, 'Nincs felhő URL beállítva');
+                    return;
+                }
+
+                var payload = {
+                    action: 'save',
+                    name: record.name,
+                    avatar: record.avatar || '🐝',
+                    score: Number(record.score),
+                    total: Number(record.total || 26),
+                    percent: Number(record.percent || 0),
+                    rank: record.rank || 'Kutató',
+                    timeTaken: Number(record.timeTaken || 0),
+                    timestamp: record.timestamp || new Date().toISOString()
+                };
+
+                // Google Apps Script requires no-cors for direct browser POSTs or simple fetch
+                fetch(url, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                }).then(function() {
+                    lastSyncTime = new Date();
+                    if (callback) callback(true);
+                }).catch(function(err) {
+                    console.warn('Felhő mentési hiba (offline?):', err);
+                    if (callback) callback(false, err);
+                });
+            },
+            fetchScores: function(onSuccess, onError) {
+                var url = getUrl();
+                if (!url) {
+                    if (onError) onError('Nincs felhő URL beállítva');
+                    return;
+                }
+
+                if (isFetching) return;
+                isFetching = true;
+
+                var fetchUrl = url + (url.indexOf('?') >= 0 ? '&' : '?') + 't=' + Date.now();
+
+                fetch(fetchUrl, {
+                    method: 'GET',
+                    cache: 'no-cache'
+                })
+                .then(function(res) {
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    return res.json();
+                })
+                .then(function(data) {
+                    isFetching = false;
+                    lastSyncTime = new Date();
+
+                    var rows = Array.isArray(data) ? data : (data.records || data.data || []);
+                    var normalized = rows.map(function(item) {
+                        return {
+                            name: String(item.name || item.Name || 'Névtelen'),
+                            avatar: String(item.avatar || item.Avatar || '🐝'),
+                            score: Number(item.score || item.Score || 0),
+                            total: Number(item.total || item.Total || 26),
+                            percent: Number(item.percent || item.Percent || 0),
+                            rank: String(item.rank || item.Rank || 'Mézkutató'),
+                            timeTaken: Number(item.timeTaken || item.TimeTaken || 0),
+                            timestamp: item.timestamp || item.Timestamp || new Date().toISOString()
+                        };
+                    });
+
+                    // Merge into StorageEngine
+                    var merged = StorageEngine.mergeCloudRecords(normalized);
+
+                    // If new players arrived, trigger toast
+                    if (previousPlayerCount > 0 && merged.length > previousPlayerCount) {
+                        var diff = merged.length - previousPlayerCount;
+                        var latest = merged[0];
+                        showToast('🎉 ' + diff + ' új kitöltés érkezett a felhőből! (' + latest.name + ' - ' + latest.score + 'p)');
+                        SoundFX.playFanfare();
+                    }
+                    previousPlayerCount = merged.length;
+
+                    if (onSuccess) onSuccess(merged, normalized.length);
+                })
+                .catch(function(err) {
+                    isFetching = false;
+                    console.warn('Felhő szinkron lekérés hiba:', err);
+                    if (onError) onError(err);
+                });
+            },
+            testConnection: function(testUrl, callback) {
+                var targetUrl = testUrl || getUrl();
+                if (!targetUrl || targetUrl.trim().length < 5) {
+                    callback(false, 'Adj meg egy érvényes URL-t!');
+                    return;
+                }
+                var fetchUrl = targetUrl.trim() + (targetUrl.indexOf('?') >= 0 ? '&' : '?') + 'test=1&t=' + Date.now();
+                fetch(fetchUrl, { method: 'GET', cache: 'no-cache' })
+                    .then(function(res) {
+                        if (res.ok) {
+                            return res.json().then(function(json) {
+                                var count = Array.isArray(json) ? json.length : 0;
+                                callback(true, '✅ Kapcsolat sikeres! ' + count + ' meglévő eredmény található.');
+                            }).catch(function() {
+                                callback(true, '✅ Kapcsolat sikeres a felhő szerverrel!');
+                            });
+                        } else {
+                            callback(false, '❌ Szerver hiba (HTTP ' + res.status + ')');
+                        }
+                    })
+                    .catch(function(err) {
+                        callback(false, '❌ Nem sikerült elérni a szervert: ' + (err.message || 'Hálózati hiba'));
+                    });
+            },
+            startAutoPoll: function(onUpdate) {
+                this.stopAutoPoll();
+                var self = this;
+                if (!this.isConfigured()) return;
+
+                autoPollInterval = setInterval(function() {
+                    var dashScreen = document.getElementById('screen-dashboard');
+                    if (dashScreen && dashScreen.classList.contains('active')) {
+                        self.fetchScores(function(merged) {
+                            if (onUpdate) onUpdate(merged);
+                        });
+                    }
+                }, 12000);
+            },
+            stopAutoPoll: function() {
+                if (autoPollInterval) {
+                    clearInterval(autoPollInterval);
+                    autoPollInterval = null;
+                }
+            }
+        };
+    })();
+
+    /* ==========================================================================
        5. AUTOMATIC PERSISTENT STORAGE ENGINE
        ========================================================================== */
     var StorageEngine = (function(){
@@ -2327,7 +2642,50 @@
                 }
 
                 saveRaw(list);
+                // Trigger cloud send silently
+                CloudEngine.sendResult(resultObj);
                 return list;
+            },
+            mergeCloudRecords: function(cloudList) {
+                var localList = loadRaw();
+                var map = {};
+
+                // Map local records by name
+                localList.forEach(function(item) {
+                    var key = item.name.trim().toLowerCase();
+                    map[key] = item;
+                });
+
+                // Merge cloud records
+                cloudList.forEach(function(cloudItem) {
+                    var key = cloudItem.name.trim().toLowerCase();
+                    if (!map[key]) {
+                        map[key] = cloudItem;
+                    } else {
+                        if (cloudItem.score >= map[key].score) {
+                            map[key].score = cloudItem.score;
+                            map[key].total = cloudItem.total;
+                            map[key].percent = cloudItem.percent;
+                            map[key].rank = cloudItem.rank;
+                            map[key].avatar = cloudItem.avatar || map[key].avatar;
+                            map[key].timestamp = cloudItem.timestamp;
+                        }
+                    }
+                });
+
+                var mergedList = [];
+                for (var k in map) {
+                    mergedList.push(map[k]);
+                }
+
+                mergedList.sort(function(a, b) {
+                    if (b.score !== a.score) return b.score - a.score;
+                    if (b.percent !== a.percent) return b.percent - a.percent;
+                    return new Date(b.timestamp) - new Date(a.timestamp);
+                });
+
+                saveRaw(mergedList);
+                return mergedList;
             },
             exportJSON: function() {
                 var list = this.getAll();
@@ -2418,6 +2776,9 @@
 
         function showScreen(name) {
             SoundFX.playClick();
+            if (name !== 'dashboard') {
+                CloudEngine.stopAutoPoll();
+            }
             for (var key in screens) {
                 if (screens.hasOwnProperty(key)) {
                     screens[key].classList.remove('active');
@@ -2627,8 +2988,8 @@
             SoundFX.playClick();
         };
 
-        function renderDashboard() {
-            var list = StorageEngine.getAll();
+        function updateDashboardUI(customList) {
+            var list = customList || StorageEngine.getAll();
             var totalGames = list.length;
             document.getElementById('tab-total-count').textContent = totalGames;
 
@@ -2664,7 +3025,7 @@
                     chipsHtml = '<div style="font-size: 0.72rem; color: var(--text-muted); padding: 4px;">Még nincs kitöltő</div>';
                 } else {
                     tierPlayers.forEach(function(player) {
-                        var isMe = (player.name.trim().toLowerCase() === state.playerName.trim().toLowerCase());
+                        var isMe = (state.playerName && player.name.trim().toLowerCase() === state.playerName.trim().toLowerCase());
                         chipsHtml += '<span class="player-chip' + (isMe ? ' is-me' : '') + '">' +
                             (player.avatar || '🐝') + ' ' + escapeHtml(player.name) + ' (' + player.score + 'p)' +
                         '</span>';
@@ -2688,7 +3049,7 @@
             } else {
                 list.forEach(function(item, idx) {
                     var rankCls = (idx === 0) ? 'gold' : ((idx === 1) ? 'silver' : ((idx === 2) ? 'bronze' : ''));
-                    var isCurrent = (item.name.trim().toLowerCase() === state.playerName.trim().toLowerCase());
+                    var isCurrent = (state.playerName && item.name.trim().toLowerCase() === state.playerName.trim().toLowerCase());
 
                     var row = document.createElement('div');
                     row.className = 'table-row' + (isCurrent ? ' current-player' : '');
@@ -2705,7 +3066,35 @@
                 });
             }
 
+            // Update Cloud Status Bar
+            var dot = document.getElementById('cloud-dot-indicator');
+            var label = document.getElementById('cloud-status-label');
+            var timeEl = document.getElementById('cloud-last-synced');
+
+            if (CloudEngine.isConfigured()) {
+                dot.className = 'cloud-dot online';
+                label.textContent = '🟢 Élő Közös Felhő Ranglista';
+                var last = CloudEngine.getLastSyncTime();
+                timeEl.textContent = last ? 'Frissítve: ' + last.toLocaleTimeString('hu-HU') : 'Szinkronizálás aktív';
+            } else {
+                dot.className = 'cloud-dot offline';
+                label.textContent = '🟡 Helyi Mód (Kiállítógép)';
+                timeEl.textContent = 'Csak ezen a gépen mentve';
+            }
+        }
+
+        function renderDashboard() {
+            updateDashboardUI();
             showScreen('dashboard');
+
+            if (CloudEngine.isConfigured()) {
+                CloudEngine.fetchScores(function(merged) {
+                    updateDashboardUI(merged);
+                });
+                CloudEngine.startAutoPoll(function(merged) {
+                    updateDashboardUI(merged);
+                });
+            }
         }
 
         function escapeHtml(str) {
@@ -2751,6 +3140,12 @@
         var badgeClickTimer = null;
 
         function triggerAdminModal() {
+            var urlInput = document.getElementById('admin-cloud-url-input');
+            if (urlInput) {
+                urlInput.value = CloudEngine.getUrl();
+            }
+            var msg = document.getElementById('admin-cloud-msg');
+            if (msg) msg.style.display = 'none';
             openModal('modal-admin');
         }
 
@@ -2776,6 +3171,56 @@
                         triggerAdminModal();
                     }
                 });
+
+                // Cloud manual sync on dashboard
+                var manualSyncBtn = document.getElementById('cloud-manual-sync-btn');
+                if (manualSyncBtn) {
+                    manualSyncBtn.addEventListener('click', function() {
+                        if (!CloudEngine.isConfigured()) {
+                            alert('Nincs felhő URL beállítva! Nyisd meg az admint (Ctrl+Shift+A) a beállításhoz.');
+                            return;
+                        }
+                        manualSyncBtn.textContent = '⏳ Frissítés...';
+                        CloudEngine.fetchScores(function(merged, count) {
+                            manualSyncBtn.textContent = '🔄 Frissítés';
+                            updateDashboardUI(merged);
+                            showToast('✅ Felhő szinkron kész (' + count + ' eredmény)');
+                        }, function(err) {
+                            manualSyncBtn.textContent = '🔄 Frissítés';
+                            showToast('❌ Nem sikerült a szinkron', '⚠️');
+                        });
+                    });
+                }
+
+                // Cloud Admin Save & Test buttons
+                var cloudSaveBtn = document.getElementById('admin-cloud-save-btn');
+                var cloudTestBtn = document.getElementById('admin-cloud-test-btn');
+                var cloudUrlInput = document.getElementById('admin-cloud-url-input');
+                var cloudMsg = document.getElementById('admin-cloud-msg');
+
+                if (cloudSaveBtn) {
+                    cloudSaveBtn.addEventListener('click', function() {
+                        var url = (cloudUrlInput.value || '').trim();
+                        CloudEngine.setUrl(url);
+                        cloudMsg.style.display = 'block';
+                        cloudMsg.style.color = '#10b981';
+                        cloudMsg.textContent = url ? '✅ Felhő URL sikeresen elmentve!' : 'ℹ️ Felhő szinkron kikapcsolva (csak helyi mód).';
+                        updateDashboardUI();
+                    });
+                }
+
+                if (cloudTestBtn) {
+                    cloudTestBtn.addEventListener('click', function() {
+                        var url = (cloudUrlInput.value || '').trim();
+                        cloudMsg.style.display = 'block';
+                        cloudMsg.style.color = '#fbbf24';
+                        cloudMsg.textContent = '⏳ Kapcsolat tesztelése...';
+                        CloudEngine.testConnection(url, function(success, message) {
+                            cloudMsg.style.color = success ? '#10b981' : '#f43f5e';
+                            cloudMsg.textContent = message;
+                        });
+                    });
+                }
 
                 // Admin buttons inside hidden modal
                 document.getElementById('admin-export-json').addEventListener('click', function() {
@@ -2855,6 +3300,20 @@
     /* ==========================================================================
        7. MODAL UTILITIES
        ========================================================================== */
+    
+    function showToast(msg, icon) {
+        var toast = document.getElementById('toast-notif');
+        var msgEl = document.getElementById('toast-msg');
+        var iconEl = document.getElementById('toast-icon');
+        if (!toast || !msgEl) return;
+        msgEl.textContent = msg;
+        if (icon && iconEl) iconEl.textContent = icon;
+        toast.classList.add('show');
+        setTimeout(function() {
+            toast.classList.remove('show');
+        }, 3800);
+    }
+
     window.openModal = function(id) {
         var modal = document.getElementById(id);
         if (modal) modal.classList.add('active');
